@@ -343,6 +343,8 @@ def select_entry_method(market_context, method_stats=None):
         priors["RETEST"] += 0.08
         priors["SUPPORT_BOUNCE"] += 0.04
     scored = {}
+    total_entry_samples = sum(int((stats.get(name) or {}).get("trades", 0) or 0) for name in ENTRY_METHODS)
+    learning_ready = total_entry_samples >= GATE_CLOSED
     for name in ENTRY_METHODS:
         row = stats.get(name, {})
         n = int(row.get("trades", 0) or 0)
@@ -350,7 +352,7 @@ def select_entry_method(market_context, method_stats=None):
         win_rate = float(row.get("win_rate_pct", 50.0) or 50.0)
         # Shrink small samples toward the regime prior; historical performance
         # becomes influential only as real closed trades accumulate.
-        weight = min(0.70, n / 30.0)
+        weight = min(0.70, n / 30.0) if learning_ready else 0.0
         learned = 0.5 + max(-0.5, min(0.5, avg / 2.0)) * 0.55 + (win_rate - 50.0) / 100.0 * 0.45
         scored[name] = (1.0 - weight) * priors[name] + weight * learned
     chosen = max(ENTRY_METHODS, key=lambda name: (scored[name], name))
@@ -358,5 +360,6 @@ def select_entry_method(market_context, method_stats=None):
         "method": chosen,
         "scores": {name: round(value, 5) for name, value in scored.items()},
         "samples": {name: int((stats.get(name) or {}).get("trades", 0) or 0) for name in ENTRY_METHODS},
-        "source": "ONLINE_LEARNED_ENTRY_POLICY",
+        "total_samples": total_entry_samples, "learning_ready": learning_ready,
+        "source": "ONLINE_LEARNED_ENTRY_POLICY" if learning_ready else "REGIME_PRIOR_UNTIL_10_CLOSED",
     }
