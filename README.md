@@ -2,39 +2,44 @@
 
 A SOL/USDT-only research and paper-signal engine, separate from Zied Quant and other strategy labs.
 
-## Scope
+## Operating rules
 
-- Analyze SOL/USDT Spot market data and generate BUY/WAIT paper signals only; no live orders.
-- Track every BUY signal until TP, SL, or a trailing stop closes it. **There is no time-based exit.** A signal stays open until a price-based exit condition is met.
-- Record each closed result and train only on eligible, fully closed outcomes.
-- Incorporate Solana-related news published in the previous 24 hours with duplicate filtering and publication-time safeguards.
-- Preserve model checkpoints, signal history, feature schema, and learning counters across workflow cycles.
+- SOL/USDT Spot analysis only; BUY/WAIT paper signals, no real orders or exchange credentials.
+- One active paper signal at a time. A new signal may open only after the previous one closes.
+- Signal exits are price-based: TP, SL, or a tightened trailing SL. **No Time Exit.**
+- Every signal records its strategy, entry reason, score, timeframe, market regime, feature snapshot, original/current TP and SL, trailing changes, and net result.
+- Net results account for configurable simulated fees and slippage (PAPER_FEE_PCT, PAPER_SLIPPAGE_PCT).
 
-## Model targets
+## Analysis and strategy discovery
 
-- Deep-learning architecture with 30 trainable layers.
-- Feature pipeline targeting 1,000+ distinct, validated features from price action, candles, indicators, volume/liquidity, order-book data when available, market regime, cross-market context, and news sentiment/relevance/recency.
-- Chronological walk-forward evaluation with fees/slippage and leakage prevention. Depth and feature count are targets, not guarantees of predictive performance.
+- Stable 1,205-key feature schema: 200 observed candle/return descriptors, five deterministic transformations of those descriptors, and five market/news context values.
+- Transformed features are derived from the same market observations; they are not 1,205 independent data sources.
+- Multi-timeframe context uses 5m, 15m, 1h, and 4h candles. Order-book imbalance/spread and recent Solana news sentiment are included where available.
+- Eight explainable strategy families are discovered and ranked dynamically.
+- Historical strategy simulation uses future candles only after each historical entry, conservative SL-first handling when TP and SL are touched in the same candle, and estimated fees/slippage.
+- Strategy eligibility currently requires at least 20 completed simulated trades, positive net expectancy, and profit factor above 1.0. Results are research estimates, not guarantees.
 
-## Signal lifecycle
+## AI learning gate
 
-`ANALYZE → WAIT or BUY → OPEN → TP / SL / TRAILING → CLOSED → LABEL → TRAIN → NEXT CYCLE`
+- The 30-layer neural network remains inactive until the persisted history contains at least 500 TP outcomes and 500 SL outcomes.
+- Only fully closed signals are eligible for training.
+- After activation, retraining is attempted when at least five additional closed outcomes have accumulated.
+- The model's probability filter is applied only when a compatible checkpoint exists. Otherwise, the strategy engine continues in paper mode without pretending the AI is ready.
+- Training uses chronological 80/20 separation and records train/validation loss. This is a basic safeguard, not a substitute for robust walk-forward validation.
 
-Only one active SOL/USDT paper signal at a time by default. A new signal may be created after the previous one closes. Open signals are not used as closed-outcome labels.
+## Persistence and workflow
 
-## Lightweight dashboard summary
+- GitHub Actions executes 100 cycles, persists state after each cycle, then dispatches the next workflow run.
+- State is never reset by a normal workflow start.
+- solana_summary.json is the compact dashboard feed; detailed history remains in solana_state.json.
+- When solana_state.json exceeds 90 MiB, state_storage.py splits it into repository parts with a SHA-256 manifest. The next run reconstructs and verifies the original JSON before processing.
+- Model checkpoint and top-strategy snapshot are persisted between cycles.
+- A workflow concurrency group prevents overlapping engine runs.
 
-`solana_summary.json` is the small, dashboard-facing summary updated on every completed cycle. It contains only the SOL price, total signal count, TP count, SL count, active signal summary, cycle number, and update timestamp. Detailed training data and full signal history remain separate from this compact file.
+## Dashboard
 
-The main Zied Quant HTML dashboard can consume this JSON for a dedicated Solana section without downloading the full learning state.
+The Solana tab in the main Zied Quant dashboard reads only solana_summary.json and shows current price, signal counts, active signal details, TP/SL/trailing levels, feature count, AI gate, market regime, and the dynamically ranked top 20 strategies.
 
-## Safety
+## Safety and interpretation
 
-- Paper trading only; no exchange credentials or live order execution.
-- Market/news data may be delayed, incomplete, or incorrect.
-- Simulated performance does not guarantee future results.
-- Validate the 30-layer / 1,000+ feature model against data volume and compute limits before relying on its signals.
-
-## Implementation status
-
-Project documentation and the compact summary JSON schema are initialized. Engine, signal manager, news ingestion, persistent learning, workflow, and dashboard integration remain to be implemented and tested.
+All orders and outcomes are simulated. Exchange candles, order-book snapshots, and news feeds can be delayed or incomplete. Strategy backtests and model probabilities can overfit and do not imply future profitability. No model is allowed to control entries before its learning gate is met and a compatible model checkpoint is saved.
