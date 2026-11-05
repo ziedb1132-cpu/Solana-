@@ -25,7 +25,7 @@ class SignalManager:
                     a["sl_old"]=old;a["sl"]=proposed;a["sl_updated_at"]=now;a["change_reason"]="trailing"
         if not s.get("open_signal") and candidate and candidate.get("side")=="BUY":
             s["total_signals"]+=1
-            s["open_signal"]={"id":s["total_signals"],"side":"BUY","entry":candidate["entry"],"tp":candidate["tp"],"sl":candidate["sl"],"tp_old":None,"sl_old":None,"high_water":candidate["entry"],"opened_at":now,"status":"OPEN"}
+            s["open_signal"]={"id":s["total_signals"],"side":"BUY","entry":candidate["entry"],"tp":candidate["tp"],"sl":candidate["sl"],"tp_old":None,"sl_old":None,"high_water":candidate["entry"],"opened_at":now,"status":"OPEN","features":candidate.get("features",{})}
         s["price"]=price;s["updated_at"]=now
         write(s);self.write_summary(s)
     def write_summary(self,s):
