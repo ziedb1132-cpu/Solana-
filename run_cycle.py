@@ -9,8 +9,8 @@ from ai_model import gate_status,train,predict_probability,predict_exit_policy
 def main():
     restore()
     news=fetch_news();sentiment=sentiment_score(news)
-    price,candidate,features,ranked,context=analyze(sentiment)
     state=read()
+    price,candidate,features,ranked,context=analyze(sentiment,state.get("entry_method_stats",{}))
     state["news_items"]=news[:250];state["news_sentiment"]=sentiment;state["news_updated_at"]=int(time.time())
     write(state)
     gate=gate_status(state.get("history",[]))
