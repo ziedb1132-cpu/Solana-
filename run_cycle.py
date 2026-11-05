@@ -25,7 +25,7 @@ def main():
     last_trained=int(state.get("last_training_samples",0))
     if gate["enabled"] and gate.get("compatible_signals",0)>=max(10,last_trained+5):
         result=train(closed,epochs=2);state["last_training"]=result
-        if result.get("trained"):state["last_training_samples"]=len(closed)
+        if result.get("trained"):state["last_training_samples"]=int(result.get("samples",gate.get("compatible_signals",0)))
     state["strategy_discovery"]={"evaluated":len(ranked),"eligible":sum(1 for x in ranked if x.get("eligible")),
                                   "top":ranked[:20],"updated_at":int(time.time())}
     write(state)
