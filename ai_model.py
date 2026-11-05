@@ -318,3 +318,45 @@ def predict_exit_policy(features, entry_price):
         }
     except (TypeError, ValueError, ZeroDivisionError):
         return None
+
+
+ENTRY_METHODS = ("MARKET", "BREAKOUT", "RETEST", "SUPPORT_BOUNCE")
+
+def select_entry_method(market_context, method_stats=None):
+    """Online, outcome-based entry policy with regime-aware priors and exploration."""
+    ctx = market_context or {}
+    stats = method_stats or {}
+    regime = ctx.get("regime", "range")
+    trend = float(ctx.get("trend", 0.0) or 0.0)
+    volatility = float(ctx.get("volatility", 0.0) or 0.0)
+    imbalance = float(ctx.get("book_imbalance", 0.0) or 0.0)
+    priors = {
+        "MARKET": 0.48 + (0.12 if trend > 0.003 else 0.0) - (0.08 if volatility > 0.008 else 0.0),
+        "BREAKOUT": 0.55 if regime == "bullish" else 0.30,
+        "RETEST": 0.58 if regime == "bullish" else (0.42 if regime == "range" else 0.25),
+        "SUPPORT_BOUNCE": 0.55 if regime == "range" else (0.35 if regime == "bearish" else 0.43),
+    }
+    if imbalance > 0.15:
+        priors["MARKET"] += 0.04
+        priors["BREAKOUT"] += 0.03
+    if volatility > 0.008:
+        priors["RETEST"] += 0.08
+        priors["SUPPORT_BOUNCE"] += 0.04
+    scored = {}
+    for name in ENTRY_METHODS:
+        row = stats.get(name, {})
+        n = int(row.get("trades", 0) or 0)
+        avg = float(row.get("avg_net_return_pct", 0.0) or 0.0)
+        win_rate = float(row.get("win_rate_pct", 50.0) or 50.0)
+        # Shrink small samples toward the regime prior; historical performance
+        # becomes influential only as real closed trades accumulate.
+        weight = min(0.70, n / 30.0)
+        learned = 0.5 + max(-0.5, min(0.5, avg / 2.0)) * 0.55 + (win_rate - 50.0) / 100.0 * 0.45
+        scored[name] = (1.0 - weight) * priors[name] + weight * learned
+    chosen = max(ENTRY_METHODS, key=lambda name: (scored[name], name))
+    return {
+        "method": chosen,
+        "scores": {name: round(value, 5) for name, value in scored.items()},
+        "samples": {name: int((stats.get(name) or {}).get("trades", 0) or 0) for name in ENTRY_METHODS},
+        "source": "ONLINE_LEARNED_ENTRY_POLICY",
+    }
