@@ -38,12 +38,13 @@ class SignalManager:
             a.setdefault("original_tp",a.get("tp"));a.setdefault("original_sl",a.get("sl"))
             a.setdefault("high_water",float(a.get("entry",price)))
             a.setdefault("low_water",float(a.get("entry",price)))
-            a["high_water"]=max(float(a["high_water"]),float(price))
+            previous_high=float(a["high_water"])
+            a["high_water"]=max(previous_high,float(price))
             a["low_water"]=min(float(a["low_water"]),float(price))
             if price>=float(a["tp"]):_close(a,"TP",price,now,s);s["open_signal"]=None
             elif price<=float(a["sl"]):_close(a,"SL",price,now,s);s["open_signal"]=None
-            elif price>float(a.get("high_water",a["entry"])):
-                old=float(a["sl"]);a["high_water"]=price;proposed=price*0.993
+            elif price>previous_high:
+                old=float(a["sl"]);proposed=price*0.993
                 if proposed>old:
                     trail_log=a.setdefault("risk_history",[])
                     trail_log.append({"at":now,"price":price,"sl_old":old,"sl_new":proposed,"reason":"trailing_stop_tightened"})
