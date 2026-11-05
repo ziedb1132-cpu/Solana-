@@ -32,7 +32,7 @@ A SOL/USDT-only research and paper-signal engine, separate from Zied Quant and o
 - GitHub Actions executes 100 cycles, persists state after each cycle, then dispatches the next workflow run.
 - State is never reset by a normal workflow start.
 - solana_summary.json is the compact dashboard feed; detailed history remains in solana_state.json.
-- When solana_state.json exceeds 90 MiB, state_storage.py splits it into repository parts with a SHA-256 manifest. The next run reconstructs and verifies the original JSON before processing.
+- Any persisted runtime artifact (solana_state.json, solana_summary.json, strategy_history.json, or solana_model.pt) exceeding 90 MiB is split into repository parts with a SHA-256 manifest. The next run reconstructs and verifies each original file before processing.
 - Model checkpoint and top-strategy snapshot are persisted between cycles.
 - A workflow concurrency group prevents overlapping engine runs.
 
