@@ -21,7 +21,7 @@ A SOL/USDT-only research and paper-signal engine, separate from Zied Quant and o
 
 ## AI learning gate
 
-- The 30-layer neural network remains inactive until the persisted history contains at least 500 TP outcomes and 500 SL outcomes.
+- The 30-layer neural network remains inactive until the persisted history contains at least 500 net-profitable and 500 net-losing closed outcomes.
 - Only fully closed signals are eligible for training.
 - After activation, retraining is attempted when at least five additional closed outcomes have accumulated.
 - The model's probability filter is applied only when a compatible checkpoint exists. Otherwise, the strategy engine continues in paper mode without pretending the AI is ready.
