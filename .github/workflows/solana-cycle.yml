@@ -29,7 +29,9 @@ jobs:
         run: |
           python -m compileall -q ai_model.py feature_engine.py news_engine.py run_cycle.py signal_manager.py solana_engine.py state_storage.py strategy_engine.py
           python - <<'PY'
+          import math
           from feature_engine import build_features
+          from ai_model import gate_status
           from strategy_engine import evaluate_strategies
           candles=[]
           for i in range(300):
@@ -38,7 +40,16 @@ jobs:
           features=build_features(candles,{"trend":0.01,"volatility":0.002},{"imbalance":0.1,"spread_pct":0.02},0.05)
           assert len(features)==1205, f"Expected 1205 features, got {len(features)}"
           assert len(evaluate_strategies(candles))==8, "Expected 8 strategy families"
-          print("PREFLIGHT_OK features=1205 strategies=8")
+          sample={k:0.001 for k in features}
+          closed=[{"status":"TP","features":sample,"feature_version":"solana-1200-v2"} for _ in range(10)]
+          assert not gate_status(closed[:9])["enabled"], "AI gate opened before 10 closes"
+          assert gate_status(closed)["enabled"], "AI gate did not open at 10 compatible closes"
+          invalid=dict(sample);invalid[next(iter(invalid))]=float("nan")
+          bad=[{"status":"TP","features":invalid,"feature_version":"solana-1200-v2"} for _ in range(10)]
+          assert not gate_status(bad)["enabled"], "AI gate accepted non-finite features"
+          wrong=[{"status":"TP","features":sample,"feature_version":"wrong-version"} for _ in range(10)]
+          assert not gate_status(wrong)["enabled"], "AI gate accepted an incompatible feature version"
+          print("PREFLIGHT_OK features=1205 strategies=8 ai_gate=10 finite/version_checked")
           PY
       - name: Execute 100 cycles and persist every cycle
         env:
