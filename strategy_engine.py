@@ -60,7 +60,8 @@ def _backtest(candles,name):
             if hi>=tp:
                 exit_price=tp;exit_index=j;break
         if exit_price is None:
-            i+=1;continue
+            # The simulated position remains occupied for its full 48-candle evaluation window.
+            i=min(len(candles)-1,i+48);continue
         trades.append((exit_price/entry-1)*100-fee)
         i=exit_index+1
     wins=[x for x in trades if x>0];losses=[x for x in trades if x<0]
