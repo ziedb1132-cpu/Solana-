@@ -4,7 +4,7 @@ from state_storage import restore
 from solana_engine import analyze
 from signal_manager import SignalManager,read,write
 from news_engine import fetch_news,sentiment_score
-from ai_model import gate_status,train,predict_probability
+from ai_model import gate_status,train,predict_probability,predict_exit_policy
 
 def main():
     restore()
@@ -15,17 +15,31 @@ def main():
     write(state)
     gate=gate_status(state.get("history",[]))
     probability=predict_probability(features) if gate["enabled"] else None
+    exit_policy=predict_exit_policy(features,price) if gate["enabled"] else None
     if candidate and probability is not None:
         candidate["ai_win_probability"]=round(probability,5)
-        # AI only filters after the 10-closed-signal gate and a valid saved model.
+        # Preserve the existing model confidence filter; TP/SL policy is handled independently.
         if probability<0.52:candidate=None
+    if candidate:
+        if exit_policy:
+            candidate.update(exit_policy)
+            candidate["exit_policy_source"]="AI_LEARNED_EXIT_POLICY"
+            candidate["exit_policy_samples"]=exit_policy.get("model_samples",0)
+        else:
+            # Safe initial levels until the exit model has enough observed excursions.
+            candidate["tp"]=price*1.012
+            candidate["sl"]=price*0.993
+            candidate["exit_policy_source"]="FIXED_FALLBACK"
+            candidate["exit_policy_samples"]=gate.get("exit_policy_samples",0)
     SignalManager().cycle(price,candidate,ranked,features,context)
     state=read();gate=gate_status(state.get("history",[]));state["ai_gate"]=gate
     closed=[x for x in state.get("history",[]) if x.get("status") in ("TP","SL")]
     last_trained=int(state.get("last_training_samples",0))
-    if gate["enabled"] and gate.get("compatible_signals",0)>=max(10,last_trained+5):
+    # Incremental update after every additional compatible closed signal.
+    if gate["enabled"] and gate.get("compatible_signals",0)>last_trained:
         result=train(closed,epochs=2);state["last_training"]=result
-        if result.get("trained"):state["last_training_samples"]=int(result.get("samples",gate.get("compatible_signals",0)))
+        if result.get("trained"):
+            state["last_training_samples"]=int(result.get("samples",gate.get("compatible_signals",0)))
     state["strategy_discovery"]={"evaluated":len(ranked),"eligible":sum(1 for x in ranked if x.get("eligible")),
                                   "top":ranked[:20],"updated_at":int(time.time())}
     write(state)
@@ -34,6 +48,6 @@ def main():
         json.dump({"cycle":state["cycle"],"updated_at":state["updated_at"],"strategies":ranked[:20]},f,ensure_ascii=False,separators=(",",":"))
     print(json.dumps({"cycle":state["cycle"],"price":price,"open":bool(state.get("open_signal")),
                       "news":len(news),"features":len(features),"strategies":len(ranked),
-                      "ai_gate":gate,"ai_probability":probability},ensure_ascii=False))
+                      "ai_gate":gate,"ai_probability":probability,"ai_exit_policy":exit_policy},ensure_ascii=False))
 
 if __name__=="__main__":main()
