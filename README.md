@@ -16,7 +16,7 @@ A SOL/USDT-only research and paper-signal engine, separate from Zied Quant and o
 - Transformed features are derived from the same market observations; they are not 1,205 independent data sources.
 - Multi-timeframe context uses 5m, 15m, 1h, and 4h candles. Order-book imbalance/spread and recent Solana news sentiment are included where available.
 - Eight explainable strategy families are discovered and ranked dynamically.
-- Historical strategy simulation uses future candles only after each historical entry, conservative SL-first handling when TP and SL are touched in the same candle, and estimated fees/slippage.
+- Historical strategy simulation uses future candles only after each historical entry, conservative SL-first handling when TP and SL are touched in the same candle, estimated fees/slippage, and prevents a second simulated position from overlapping an unresolved 48-candle evaluation window.
 - Strategy eligibility currently requires at least 20 completed simulated trades, positive net expectancy, and profit factor above 1.0. Results are research estimates, not guarantees.
 
 ## AI learning gate
@@ -25,7 +25,10 @@ A SOL/USDT-only research and paper-signal engine, separate from Zied Quant and o
 - Only fully closed signals are eligible for training.
 - After activation, retraining is attempted when at least five additional compatible closed signals have accumulated.
 - The model's probability filter is applied only when a compatible checkpoint exists. Otherwise, the strategy engine continues in paper mode without pretending the AI is ready.
-- Training uses chronological 80/20 separation and records train/validation loss. This is a basic safeguard, not a substitute for robust walk-forward validation.
+- Training resumes compatible saved model weights and optimizer state instead of restarting from random weights on every training cycle.
+- Feature normalization is fitted on the initial chronological training partition and persisted with the model; subsequent training and predictions reuse the same scaler.
+- The gate rejects incompatible feature versions, malformed dimensions, and non-finite feature values. Workflow preflight checks the 9/10/invalid-data gate boundaries.
+- Training uses chronological 80/20 separation and records train/validation loss, accuracy, and Brier score. Early metrics remain experimental with small samples.
 
 ## Persistence and workflow
 
