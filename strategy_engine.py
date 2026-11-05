@@ -46,18 +46,23 @@ def _flags(candles):
     }
 
 def _backtest(candles,name):
-    trades=[];fee=(2*FEE_PCT)+SLIPPAGE_PCT
-    # Historical signals use only candles available at entry. Outcomes use later bars.
-    for i in range(40,len(candles)-1):
+    trades=[];fee=(2*FEE_PCT)+SLIPPAGE_PCT;i=40
+    # One paper position at a time per strategy; never count overlapping entries.
+    while i<len(candles)-1:
         flags=_flags(candles[:i+1])
-        if not flags.get(name):continue
-        entry=float(candles[i]["c"]);tp=entry*1.012;sl=entry*0.993;exit_price=None
-        for bar in candles[i+1:min(len(candles),i+49)]:
-            hi=float(bar["h"]);lo=float(bar["l"])
-            if lo<=sl:exit_price=sl;break
-            if hi>=tp:exit_price=tp;break
-        if exit_price is None:continue
+        if not flags.get(name):
+            i+=1;continue
+        entry=float(candles[i]["c"]);tp=entry*1.012;sl=entry*0.993;exit_price=None;exit_index=None
+        for j in range(i+1,min(len(candles),i+49)):
+            bar=candles[j];hi=float(bar["h"]);lo=float(bar["l"])
+            if lo<=sl:
+                exit_price=sl;exit_index=j;break
+            if hi>=tp:
+                exit_price=tp;exit_index=j;break
+        if exit_price is None:
+            i+=1;continue
         trades.append((exit_price/entry-1)*100-fee)
+        i=exit_index+1
     wins=[x for x in trades if x>0];losses=[x for x in trades if x<0]
     gross_win=sum(wins);gross_loss=abs(sum(losses))
     pf=gross_win/gross_loss if gross_loss else (99.0 if wins else 0.0)
