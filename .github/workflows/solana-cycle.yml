@@ -25,6 +25,21 @@ jobs:
         run: pip install -r requirements.txt
       - name: Restore split state if present
         run: python state_storage.py restore
+      - name: Validate code and feature schema
+        run: |
+          python -m compileall -q ai_model.py feature_engine.py news_engine.py run_cycle.py signal_manager.py solana_engine.py state_storage.py strategy_engine.py
+          python - <<'PY'
+          from feature_engine import build_features
+          from strategy_engine import evaluate_strategies
+          candles=[]
+          for i in range(300):
+              p=100+i*0.02
+              candles.append({"ts":i,"o":p-0.01,"h":p+0.05,"l":p-0.05,"c":p,"vol":1000+i})
+          features=build_features(candles,{"trend":0.01,"volatility":0.002},{"imbalance":0.1,"spread_pct":0.02},0.05)
+          assert len(features)==1205, f"Expected 1205 features, got {len(features)}"
+          assert len(evaluate_strategies(candles))==8, "Expected 8 strategy families"
+          print("PREFLIGHT_OK features=1205 strategies=8")
+          PY
       - name: Execute 100 cycles and persist every cycle
         env:
           GH_TOKEN: ${{ github.token }}
@@ -36,7 +51,7 @@ jobs:
             python state_storage.py pack
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -A solana_state.json solana_state.parts solana_state.manifest.json solana_summary.json solana_model.pt strategy_history.json
+            git add -A
             git commit -m "Persist Solana cycle $i [skip ci]" || true
             git push
             sleep 60
