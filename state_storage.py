@@ -1,7 +1,7 @@
 """Split every persisted Solana runtime artifact above 90 MiB and verify on restore."""
 import hashlib,json,os,shutil
 from pathlib import Path
-ARTIFACTS=("solana_state.json","solana_summary.json","strategy_history.json","solana_model.pt")
+ARTIFACTS=("solana_state.json","solana_summary.json","strategy_history.json","solana_model.pt","solana_exit_policy.pt")
 LIMIT=90*1024*1024
 BLOCK=1024*1024
 
