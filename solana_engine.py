@@ -4,7 +4,7 @@ import time
 import requests
 
 from feature_engine import build_features
-from strategy_engine import select_strategy
+from strategy_engine import select_strategy\nfrom ai_model import select_entry_method
 
 BASE = "https://www.okx.com/api/v5"
 
@@ -105,7 +105,7 @@ def _regime(cs, cs15, cs1h, cs4h):
     }
 
 
-def analyze(news_sentiment=0.0):
+def analyze(news_sentiment=0.0, entry_method_stats=None):
     cs = candles("5m", 300)
     cs15 = candles("15m", 120)
     cs1h = candles("1H", 100)
@@ -136,7 +136,7 @@ def analyze(news_sentiment=0.0):
             "entry_reason": selected["description"],
             "timeframe": "5m",
             "features": features,
-            "feature_version": "solana-1200-v2",
+            "feature_version": "solana-1200-v2",\n            "entry_method": entry_policy["method"],\n            "entry_method_scores": entry_policy["scores"],\n            "entry_method_samples": entry_policy["samples"],\n            "entry_policy_source": entry_policy["source"],\n            "entry_trigger_price": round(resistance * 1.0005, 10),\n            "entry_retest_price": round(resistance, 10),\n            "entry_support_price": round(support, 10),\n            "entry_invalidation_price": round(support * 0.985, 10),
         }
     return price, candidate, features, ranked, context
 
