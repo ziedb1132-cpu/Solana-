@@ -39,6 +39,7 @@ def _regime(cs,cs15,cs1h,cs4h):
 def analyze(news_sentiment=0.0):
     cs=candles("5m",300);cs15=candles("15m",120);cs1h=candles("1H",100);cs4h=candles("4H",80)
     price=current_price();book=orderbook_context();context=_regime(cs,cs15,cs1h,cs4h)
+    context.update({"book_imbalance":book.get("imbalance",0.0),"book_spread_pct":book.get("spread_pct",0.0)})
     selected,ranked=select_strategy(cs)
     features=build_features(cs,context,book,news_sentiment)
     candidate=None
