@@ -18,9 +18,13 @@ def write(s):
     os.replace(tmp,STATE)
 def _close(a,status,price,now,s):
     entry=float(a.get("entry",price));gross=(price/entry-1)*100 if entry else 0.0
+    high=float(a.get("high_water",entry));low=float(a.get("low_water",entry))
+    mfe=max(0.0,(high/entry-1)*100) if entry else 0.0
+    mae=max(0.0,(1-low/entry)*100) if entry else 0.0
     net=gross-(2*FEE_PCT)-SLIPPAGE_PCT
     a.update(status=status,exit_price=price,closed_at=now,gross_return_pct=round(gross,5),
-             fees_pct=2*FEE_PCT,slippage_pct=SLIPPAGE_PCT,net_return_pct=round(net,5),close_reason=status)
+             fees_pct=2*FEE_PCT,slippage_pct=SLIPPAGE_PCT,net_return_pct=round(net,5),
+             close_reason=status,mfe_pct=round(mfe,5),mae_pct=round(mae,5))
     s["history"].append(a)
     if status=="TP":s["tp_count"]+=1
     else:s["sl_count"]+=1
@@ -32,6 +36,10 @@ class SignalManager:
         s=read();s["cycle"]+=1;now=int(time.time());a=s.get("open_signal")
         if a:
             a.setdefault("original_tp",a.get("tp"));a.setdefault("original_sl",a.get("sl"))
+            a.setdefault("high_water",float(a.get("entry",price)))
+            a.setdefault("low_water",float(a.get("entry",price)))
+            a["high_water"]=max(float(a["high_water"]),float(price))
+            a["low_water"]=min(float(a["low_water"]),float(price))
             if price>=float(a["tp"]):_close(a,"TP",price,now,s);s["open_signal"]=None
             elif price<=float(a["sl"]):_close(a,"SL",price,now,s);s["open_signal"]=None
             elif price>float(a.get("high_water",a["entry"])):
@@ -46,11 +54,17 @@ class SignalManager:
             tp=float(candidate.get("tp",entry*1.012));sl=float(candidate.get("sl",entry*0.993))
             s["open_signal"]={"id":s["total_signals"],"symbol":"SOL-USDT","side":"BUY","entry":entry,"tp":tp,"sl":sl,
               "original_tp":tp,"original_sl":sl,"tp_old":None,"tp_new":tp,"sl_old":None,"sl_new":sl,
-              "high_water":entry,"opened_at":now,"status":"OPEN","features":features or candidate.get("features",{}),
+              "high_water":entry,"low_water":entry,"opened_at":now,"status":"OPEN","features":features or candidate.get("features",{}),
               "feature_version":candidate.get("feature_version","solana-1200-v2"),
               "strategy_name":candidate.get("strategy_name","BASELINE_MOMENTUM"),
               "strategy_description":candidate.get("strategy_description","Fast average above slow average with positive candle momentum"),
               "strategy_score":float(candidate.get("strategy_score",50)),"ai_win_probability":candidate.get("ai_win_probability"),
+              "exit_policy_source":candidate.get("exit_policy_source","FIXED_FALLBACK"),
+              "exit_policy_samples":candidate.get("exit_policy_samples",0),
+              "predicted_mfe_pct":candidate.get("predicted_mfe_pct"),
+              "predicted_mae_pct":candidate.get("predicted_mae_pct"),
+              "tp_distance_pct":candidate.get("tp_distance_pct"),
+              "sl_distance_pct":candidate.get("sl_distance_pct"),
               "entry_reason":candidate.get("entry_reason","Bullish SOL/USDT setup"),"timeframe":candidate.get("timeframe","5m"),
               "market_regime":(market_context or {}).get("regime","unknown"),"opened_price":price,"trailing_updates":0}
         s["price"]=price;s["updated_at"]=now;s["ranked_strategies"]=(ranked_strategies or [])[:20]
@@ -60,10 +74,11 @@ class SignalManager:
         # Keep the dashboard payload compact: never publish the 1,205 model features.
         source=s.get("open_signal")
         allowed=("id","signal_id","symbol","side","entry","tp","sl","original_tp","original_sl",
-                 "tp_old","tp_new","sl_old","sl_new","high_water","opened_at","status",
+                 "tp_old","tp_new","sl_old","sl_new","high_water","low_water","opened_at","status",
                  "strategy_name","strategy_description","strategy_score","ai_win_probability",
-                 "entry_reason","timeframe","market_regime","opened_price","trailing_updates",
-                 "risk_history","sl_updated_at","change_reason")
+                 "exit_policy_source","exit_policy_samples","predicted_mfe_pct","predicted_mae_pct",
+                 "tp_distance_pct","sl_distance_pct","entry_reason","timeframe","market_regime",
+                 "opened_price","trailing_updates","risk_history","sl_updated_at","change_reason")
         a={key:source[key] for key in allowed if key in source} if isinstance(source,dict) else None
         if a and isinstance(a.get("risk_history"),list):
             a["risk_history"]=a["risk_history"][-20:]
