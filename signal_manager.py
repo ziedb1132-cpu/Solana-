@@ -56,7 +56,12 @@ class SignalManager:
         write(s);self.write_summary(s)
     def write_summary(self,s):
         a=s.get("open_signal")
-        summary={"price":s.get("price"),"current_price":s.get("price"),"total_signals":s["total_signals"],
+        closed=[x for x in s.get("history",[]) if x.get("status") in ("TP","SL")]
+        net_values=[float(x.get("net_return_pct",0) or 0) for x in closed]
+        profitable=sum(1 for x in net_values if x>0)
+        summary={"price":s.get("price"),"current_price":s.get("price"),"closed_signals":len(closed),
+          "net_profit_pct":round(sum(net_values),5),"win_rate_pct":round(100*profitable/len(net_values),2) if net_values else None,
+          "total_signals":s["total_signals"],
           "tp_count":s["tp_count"],"sl_count":s["sl_count"],"cycle":s["cycle"],"updated_at":s.get("updated_at"),
           "open_signal":a,"strategy_count":len(s.get("ranked_strategies",[])),"top_strategies":s.get("ranked_strategies",[])[:20],
           "feature_count":1205,"ai_gate":s.get("ai_gate",{}),"last_training":s.get("last_training",{}),
