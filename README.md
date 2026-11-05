@@ -1,40 +1,40 @@
 # Zied Solana AI
 
-A SOL/USDT-only research and paper-signal engine. This project is separate from Zied Quant and other strategy labs.
+A SOL/USDT-only research and paper-signal engine, separate from Zied Quant and other strategy labs.
 
-## Mission
+## Scope
 
-- Analyze SOL/USDT spot market data.
-- Generate BUY or WAIT paper signals; never place live orders.
-- Track each open signal until TP, SL, trailing-stop, or time-based exit.
-- Record closed outcomes and use eligible outcomes for incremental model training.
-- Incorporate Solana-related news published within the previous 24 hours, with publication-time safeguards and duplicate filtering.
-- Publish a lightweight HTML dashboard backed by one generated JSON summary file.
+- Analyze SOL/USDT Spot market data and generate BUY/WAIT paper signals only; no live orders.
+- Track every BUY signal until TP, SL, or a trailing stop closes it. **There is no time-based exit.** A signal stays open until a price-based exit condition is met.
+- Record each closed result and train only on eligible, fully closed outcomes.
+- Incorporate Solana-related news published in the previous 24 hours with duplicate filtering and publication-time safeguards.
+- Preserve model checkpoints, signal history, feature schema, and learning counters across workflow cycles.
 
-## Planned model
+## Model targets
 
 - Deep-learning architecture with 30 trainable layers.
-- A feature pipeline targeting 1,000+ distinct, validated features across price action, candles, indicators, volume/liquidity, order-book data when available, market regime, cross-market context, and news sentiment/relevance/recency.
-- Persist model checkpoints, feature schema, signal history, and training counters between workflow cycles.
-- Evaluate chronologically with walk-forward validation, realistic fees/slippage, and leakage prevention. Feature count and depth are design targets, not guarantees of predictive performance.
+- Feature pipeline targeting 1,000+ distinct, validated features from price action, candles, indicators, volume/liquidity, order-book data when available, market regime, cross-market context, and news sentiment/relevance/recency.
+- Chronological walk-forward evaluation with fees/slippage and leakage prevention. Depth and feature count are targets, not guarantees of predictive performance.
 
 ## Signal lifecycle
 
-`ANALYZE → WAIT or BUY → OPEN → TP / SL / TRAILING / TIME_OUT → CLOSED → LABEL → TRAIN → NEXT CYCLE`
+`ANALYZE → WAIT or BUY → OPEN → TP / SL / TRAILING → CLOSED → LABEL → TRAIN → NEXT CYCLE`
 
 Only one active SOL/USDT paper signal at a time by default. A new signal may be created after the previous one closes. Open signals are not used as closed-outcome labels.
 
-## Dashboard
+## Lightweight dashboard summary
 
-The dashboard will report current SOL price, latest decision, active and recent signals, exit classifications, net outcomes, news intelligence, model status, feature count, training progress, and validation metrics. The dashboard data export is intended to remain a single JSON file.
+`solana_summary.json` is the small, dashboard-facing summary updated on every completed cycle. It contains only the SOL price, total signal count, TP count, SL count, active signal summary, cycle number, and update timestamp. Detailed training data and full signal history remain separate from this compact file.
 
-## Safety and limitations
+The main Zied Quant HTML dashboard can consume this JSON for a dedicated Solana section without downloading the full learning state.
+
+## Safety
 
 - Paper trading only; no exchange credentials or live order execution.
-- News and market data are external inputs and may be delayed, incomplete, or incorrect.
-- Historical or simulated performance does not guarantee future results.
-- The 30-layer / 1,000+ feature design must be validated against data volume and compute limits before enabling model-driven BUY signals.
+- Market/news data may be delayed, incomplete, or incorrect.
+- Simulated performance does not guarantee future results.
+- Validate the 30-layer / 1,000+ feature model against data volume and compute limits before relying on its signals.
 
-## Initial implementation status
+## Implementation status
 
-Project documentation initialized. The data pipeline, signal lifecycle, persistent state, model training, news ingestion, workflow, and dashboard are to be implemented and tested in subsequent commits.
+Project documentation and the compact summary JSON schema are initialized. Engine, signal manager, news ingestion, persistent learning, workflow, and dashboard integration remain to be implemented and tested.
