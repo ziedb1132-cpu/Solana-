@@ -37,6 +37,8 @@ class SignalManager:
             elif price>float(a.get("high_water",a["entry"])):
                 old=float(a["sl"]);a["high_water"]=price;proposed=price*0.993
                 if proposed>old:
+                    trail_log=a.setdefault("risk_history",[])
+                    trail_log.append({"at":now,"price":price,"sl_old":old,"sl_new":proposed,"reason":"trailing_stop_tightened"})
                     a.update(sl_old=old,sl=proposed,sl_new=proposed,sl_updated_at=now,
                              change_reason="trailing_stop_tightened",trailing_updates=int(a.get("trailing_updates",0))+1)
         if not s.get("open_signal") and candidate and candidate.get("side")=="BUY":
