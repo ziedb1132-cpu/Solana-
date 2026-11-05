@@ -17,13 +17,13 @@ def main():
     probability=predict_probability(features) if gate["enabled"] else None
     if candidate and probability is not None:
         candidate["ai_win_probability"]=round(probability,5)
-        # AI only filters after the 500-win/500-loss gate and a valid saved model.
+        # AI only filters after the 10-closed-signal gate and a valid saved model.
         if probability<0.52:candidate=None
     SignalManager().cycle(price,candidate,ranked,features,context)
     state=read();gate=gate_status(state.get("history",[]));state["ai_gate"]=gate
     closed=[x for x in state.get("history",[]) if x.get("status") in ("TP","SL")]
     last_trained=int(state.get("last_training_samples",0))
-    if gate["enabled"] and len(closed)>=last_trained+5:
+    if gate["enabled"] and gate.get("compatible_signals",0)>=max(10,last_trained+5):
         result=train(closed,epochs=2);state["last_training"]=result
         if result.get("trained"):state["last_training_samples"]=len(closed)
     state["strategy_discovery"]={"evaluated":len(ranked),"eligible":sum(1 for x in ranked if x.get("eligible")),
