@@ -57,7 +57,16 @@ class SignalManager:
         s["market_context"]=market_context or {}
         write(s);self.write_summary(s)
     def write_summary(self,s):
-        a=s.get("open_signal")
+        # Keep the dashboard payload compact: never publish the 1,205 model features.
+        source=s.get("open_signal")
+        allowed=("id","signal_id","symbol","side","entry","tp","sl","original_tp","original_sl",
+                 "tp_old","tp_new","sl_old","sl_new","high_water","opened_at","status",
+                 "strategy_name","strategy_description","strategy_score","ai_win_probability",
+                 "entry_reason","timeframe","market_regime","opened_price","trailing_updates",
+                 "risk_history","sl_updated_at","change_reason")
+        a={key:source[key] for key in allowed if key in source} if isinstance(source,dict) else None
+        if a and isinstance(a.get("risk_history"),list):
+            a["risk_history"]=a["risk_history"][-20:]
         closed=[x for x in s.get("history",[]) if x.get("status") in ("TP","SL")]
         net_values=[float(x.get("net_return_pct",0) or 0) for x in closed]
         profitable=sum(1 for x in net_values if x>0)
