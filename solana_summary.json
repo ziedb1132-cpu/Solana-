@@ -1,10 +1,1 @@
-{
-  "symbol": "SOL-USDT",
-  "current_price": null,
-  "total_signals": 0,
-  "tp_count": 0,
-  "sl_count": 0,
-  "open_signal": null,
-  "updated_at": null,
-  "cycle": 0
-}
+{"price":95.31,"total_signals":0,"tp_count":0,"sl_count":0,"cycle":1,"updated_at":1793883561,"open_signal":null}
